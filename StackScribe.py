@@ -1,9 +1,13 @@
+from asyncio import subprocess
 import feedparser
 import pdfkit
 from bs4 import BeautifulSoup
 from datetime import datetime
 import pickle
 import time
+import os
+import subprocess
+import sys
 
 #point pdfkit to the correct location of wkhtmltopdf.exe on Windows
 pdfkitconfig = pdfkit.configuration(wkhtmltopdf="C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe")
@@ -18,12 +22,27 @@ class substacksite:
         self.siteurl = siteurl
         self.lastupdated = lastupdated
 
-#build the list of sites being monitored
+#build the list of sites being monitored, and attempt to load existing site data from sites.bin
 substacksites = []
-with open("sites.bin", "rb") as f:
-    substacksites = pickle.load(f)
+try:
+    with open("sites.bin", "rb") as f:
+        substacksites = pickle.load(f)
+except:
+    print("\nNo existing site data detected!")
 
-#Check if currently monitoring any sites, if so, list them
+#build the printer information variable, and attempt to load existing printer data from printinfo.bin
+printerinfo = str
+try:
+    with open("printinfo.bin", "rb") as f:
+        printerinfo = pickle.load(f)
+    print("\nCurrent printer: " + str(printerinfo))
+except:
+    print("\nNo existing print data!")
+    print("\nEnter printer name now:\n")
+    printerinfo = input()
+    with open("printinfo.bin", "wb") as f:
+        pickle.dump(printerinfo, f)
+#Check if we were able to load any sites, if so, list them
 if substacksites:
     print("\nPresently monitoring:")
     for obj in substacksites:
@@ -33,7 +52,7 @@ else:
 
 #provide initial menu, take options, respond
 while (True):
-    print("\nTo add a site, enter [1] \nto list and edit existing sites, enter [2] \nto begin scanning, enter [3] \nIf no sites are entered and you choose to scan, the console will close.\n")
+    print("\nTo add a site, enter [1] \nto list and edit existing sites, enter [2] \nto begin scanning, enter [3] \nIf no sites are entered and you choose to scan, the console will close. \nto change printer name, enter [4]\n")
     choicetoentersite = input()
 
     #provide submenu for adding sites to the list of monitored sites
@@ -95,6 +114,15 @@ while (True):
             break
         elif not substacksites:
             quit()
+    elif choicetoentersite == "4":
+        print("\nEnter Printer Name: \nto exit, enter [return]\n")
+        printerinfo = input()
+        if printerinfo == "return":
+            break
+        else:
+            with open("printinfo.bin", "wb") as f:
+                pickle.dump(printerinfo, f)
+            print("\nPrinter name saved as: " + str(printerinfo))
 
 #iterate through list of sites, identify if a new post has been made
 while (True):
@@ -116,12 +144,23 @@ while (True):
             print("\nNew article detected from " + obj.sitename + "!")
             urltodownload = pagefeed['entries'][0]['link']
             pdfkit.from_url(urltodownload, 'out.pdf', configuration=pdfkitconfig)
-            print("\nArticle printed to PDF!")
+            print("\nNow Printing Article!\n")
             obj.lastupdated = lastpostdatetime
             with open("sites.bin", "wb") as f:
                 pickle.dump(substacksites, f)
+            if sys.platform == 'win32':
+                args = '"C:\\\\Program Files\\\\gs\\\\gs10.00.0\\\\bin\\\\gswin64c" ' \
+                       '-sDEVICE=mswinpr2 ' \
+                       '-dBATCH ' \
+                       '-dNOPAUSE ' \
+                       '-dFitPage ' \
+                       '-sOutputFile="%printer%{}" '.format(str(printerinfo))
+                ghostscript = args + os.path.join(os.getcwd(), 'out.pdf').replace('\\', '\\\\')#.replace('SPECPRIN', str(printerinfo))
+                subprocess.call(ghostscript, shell=True)
         else:
             print("\nNo new article detected from " + obj.sitename + "...")
+
+    #wait 60 seconds, then check again
     print("\nAwaiting 60(s) before scanning again...")
     time.sleep(60)
 
