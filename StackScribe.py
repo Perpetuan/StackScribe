@@ -148,15 +148,18 @@ while (True):
             obj.lastupdated = lastpostdatetime
             with open("sites.bin", "wb") as f:
                 pickle.dump(substacksites, f)
-            if sys.platform == 'win32':
-                args = '"C:\\\\Program Files\\\\gs\\\\gs10.00.0\\\\bin\\\\gswin64c" ' \
-                       '-sDEVICE=mswinpr2 ' \
-                       '-dBATCH ' \
-                       '-dNOPAUSE ' \
-                       '-dFitPage ' \
-                       '-sOutputFile="%printer%{}" '.format(str(printerinfo))
-                ghostscript = args + os.path.join(os.getcwd(), 'out.pdf').replace('\\', '\\\\')#.replace('SPECPRIN', str(printerinfo))
-                subprocess.call(ghostscript, shell=True)
+            try:
+                if sys.platform == 'win32':
+                    args = '"C:\\\\Program Files\\\\gs\\\\gs10.00.0\\\\bin\\\\gswin64c" ' \
+                           '-sDEVICE=mswinpr2 ' \
+                           '-dBATCH ' \
+                           '-dNOPAUSE ' \
+                           '-dFitPage ' \
+                           '-sOutputFile="%printer%{}" '.format(str(printerinfo))
+                    ghostscript = args + os.path.join(os.getcwd(), 'out.pdf').replace('\\', '\\\\')#.replace('SPECPRIN', str(printerinfo))
+                    subprocess.call(ghostscript, shell=True)
+            except:
+                print("\nUnable to print, ensure you are running Windows, and your printer settings are correct.")
         else:
             print("\nNo new article detected from " + obj.sitename + "...")
 
