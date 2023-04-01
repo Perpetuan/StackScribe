@@ -204,13 +204,13 @@ while (True):
                 with open("sites.bin", "wb") as f:
                     pickle.dump(substacksites, f)
                 try:
-                printconnection = cups.Connection()
-                linuxprinterlist = printconnection.getPrinters()
-                linuxprintinfo = list(linuxprinterlist.keys())[0]
-                print(linuxprintinfo)
-                printconnection.printFile(linuxprintinfo,'/home/kiri/Desktop/StackScribe/out.pdf',"",{})
+                    printconnection = cups.Connection()
+                    linuxprinterlist = printconnection.getPrinters()
+                    linuxprintinfo = list(linuxprinterlist.keys())[0]
+                    print(linuxprintinfo)
+                    printconnection.printFile(linuxprintinfo,'/home/kiri/Desktop/StackScribe/out.pdf',"",{})
                 except:
-                    #print("\nUnable to print.\nEnsure your printer settings are correct.")
+                    print("\nUnable to print.\nEnsure your printer settings are correct.")
             else:
                 print("\nNo new article detected from " + obj.sitename + "...")
     #wait 60 seconds, then check again
