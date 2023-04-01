@@ -1,4 +1,5 @@
 from asyncio import subprocess
+from logging.handlers import SYSLOG_TCP_PORT
 import feedparser
 import pdfkit
 from bs4 import BeautifulSoup
@@ -9,12 +10,27 @@ import os
 import subprocess
 import sys
 
-#point pdfkit to the correct location of wkhtmltopdf.exe on Windows
-pdfkitconfig = pdfkit.configuration(wkhtmltopdf="C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe")
+
 
 #introduce the application
 print("Welcome to StackScribe!")
-   
+
+#identify if Windows or Linux
+print("\nDetecting Operating System...")
+sysplatform = sys.platform
+if sysplatform == "win32":
+    print("\nWindows detected!")
+elif sysplatform == "Linux":
+    print("\nLinux detected!")
+else:
+    print("\nOperating System not detected!")
+
+#point pdfkit to the correct location of wkhtmltopdf.exe depending on Operating System
+if sysplatform == "Linux":
+    pdfkitconfig = pdfkit.configuration(wkhtmltopdf="/usr/local/bin/wkhtmltopdf")
+elif sysplatform == "win32":
+    pdfkitconfig = pdfkit.configuration(wkhtmltopdf="C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe")
+
 #introduce the substacksite class with arguments sitename and lastupdated
 class substacksite:
     def __init__(self, sitename, siteurl, lastupdated):
@@ -52,7 +68,7 @@ else:
 
 #provide initial menu, take options, respond
 while (True):
-    print("\nTo add a site, enter [1] \nto list and edit existing sites, enter [2] \nto begin scanning, enter [3] \nIf no sites are entered and you choose to scan, the console will close. \nto change printer name, enter [4]\n")
+    print("\nTo add a site, enter [1] \nto list and edit existing sites, enter [2] \nto begin scanning, enter [3] \nNOTE: If no sites are entered and you choose to scan, the console will close. \nto change printer name, enter [4]\n")
     choicetoentersite = input()
 
     #provide submenu for adding sites to the list of monitored sites
@@ -140,29 +156,31 @@ while (True):
         lastpostdatetime = datetime.strptime(lastpostdatetimeraw, '%d %b %Y %H:%M:%S %Z')
     
         #figure out if the latest article is new, if so, print it and update the lastpostdatetime for the respective site
-        if lastpostdatetime > obj.lastupdated:
-            print("\nNew article detected from " + obj.sitename + "!")
-            urltodownload = pagefeed['entries'][0]['link']
-            pdfkit.from_url(urltodownload, 'out.pdf', configuration=pdfkitconfig)
-            print("\nNow Printing Article!\n")
-            obj.lastupdated = lastpostdatetime
-            with open("sites.bin", "wb") as f:
-                pickle.dump(substacksites, f)
-            try:
-                if sys.platform == 'win32':
-                    args = '"C:\\\\Program Files\\\\gs\\\\gs10.00.0\\\\bin\\\\gswin64c" ' \
-                           '-sDEVICE=mswinpr2 ' \
-                           '-dBATCH ' \
-                           '-dNOPAUSE ' \
-                           '-dFitPage ' \
-                           '-sOutputFile="%printer%{}" '.format(str(printerinfo))
-                    ghostscript = args + os.path.join(os.getcwd(), 'out.pdf').replace('\\', '\\\\')#.replace('SPECPRIN', str(printerinfo))
-                    subprocess.call(ghostscript, shell=True)
-            except:
-                print("\nUnable to print, ensure you are running Windows, and your printer settings are correct.")
-        else:
-            print("\nNo new article detected from " + obj.sitename + "...")
-
+        if sysplatform == "win32":
+            if lastpostdatetime > obj.lastupdated:
+                print("\nNew article detected from " + obj.sitename + "!")
+                urltodownload = pagefeed['entries'][0]['link']
+                pdfkit.from_url(urltodownload, 'out.pdf', configuration=pdfkitconfig)
+                print("\nNow Printing Article!\n")
+                obj.lastupdated = lastpostdatetime
+                with open("sites.bin", "wb") as f:
+                    pickle.dump(substacksites, f)
+                try:
+                    if sys.platform == 'win32':
+                        args = '"C:\\\\Program Files\\\\gs\\\\gs10.00.0\\\\bin\\\\gswin64c" ' \
+                               '-sDEVICE=mswinpr2 ' \
+                               '-dBATCH ' \
+                               '-dNOPAUSE ' \
+                               '-dFitPage ' \
+                               '-sOutputFile="%printer%{}" '.format(str(printerinfo))
+                        ghostscript = args + os.path.join(os.getcwd(), 'out.pdf').replace('\\', '\\\\')#.replace('SPECPRIN', str(printerinfo))
+                        subprocess.call(ghostscript, shell=True)
+                except:
+                    print("\nUnable to print, ensure you are running Windows, and your printer settings are correct.")
+            else:
+                print("\nNo new article detected from " + obj.sitename + "...")
+        elif sysplatform == "Linux":
+                print("\nPrinting on Linux not currently supported, file outputted to .pdf instead...")
     #wait 60 seconds, then check again
     print("\nAwaiting 60(s) before scanning again...")
     time.sleep(60)
