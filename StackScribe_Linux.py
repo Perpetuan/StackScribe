@@ -166,7 +166,7 @@ while (True):
         pagefeed = feedparser.parse(obj.siteurl)
 
         #get the raw date the last entry was posted
-        lastpostdatetimeraw = pagefeed['entries'][1]['published'][5:]
+        lastpostdatetimeraw = pagefeed['entries'][0]['published'][5:]
 
         #convert the raw date to a python datetime object so it can be compared
         lastpostdatetime = datetime.strptime(lastpostdatetimeraw, '%d %b %Y %H:%M:%S %Z')
