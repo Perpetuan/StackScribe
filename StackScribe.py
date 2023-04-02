@@ -1,4 +1,5 @@
 from asyncio import subprocess
+from genericpath import isfile
 from logging.handlers import SYSLOG_TCP_PORT
 import feedparser
 import pdfkit
@@ -10,27 +11,42 @@ import os
 import subprocess
 import sys
 
-
-
 #introduce the application
 print("Welcome to StackScribe!")
 
 #identify if Windows or Linux
-print("\nDetecting Operating System...")
 sysplatform = sys.platform
 if sysplatform == "win32":
-    print("\nWindows detected!")
-elif sysplatform == "Linux":
-    print("\nLinux detected!")
+    print("\nWindows detected")
+elif sysplatform == "linux":
+    print("\nLinux detected")
+    import cups
 else:
     print("\nOperating System not detected!")
 
-#point pdfkit to the correct location of wkhtmltopdf.exe depending on Operating System
-if sysplatform == "Linux":
-    pdfkitconfig = pdfkit.configuration(wkhtmltopdf="/usr/local/bin/wkhtmltopdf")
+#check if wkhtmltopdf is installed, and point pdfkit to its correct location, depending on Operating System
+if sysplatform == "linux":
+    try:
+        if os.path.isfile("/usr/local/bin/wkhtmltopdf"):
+            print("\nwkhtmltopdf detected")
+        else:
+            print("\nwhktmltopdf not detected! install wkhtmltopdf, and then try again.")
+            exit()
+        pdfkitconfig = pdfkit.configuration(wkhtmltopdf="/usr/local/bin/wkhtmltopdf")
+    except:
+        print("Unable to determine if wkhtmltopdf is installed on your Linux system, please check, and then try again.")
+        exit()
 elif sysplatform == "win32":
-    pdfkitconfig = pdfkit.configuration(wkhtmltopdf="C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe")
-
+    try:
+        if os.path.isfile("C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe"):
+            print("\nwkhtmltopdf detected")
+        else:
+            print("\nwhktmltopdf not detected! install wkhtmltopdf, and then try again.")
+            exit()
+        pdfkitconfig = pdfkit.configuration(wkhtmltopdf="C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe")
+    except:
+        print("Unable to determine if wkhtmltopdf is installed on your Windows system, please check, and then try again.")
+        exit()
 #introduce the substacksite class with arguments sitename and lastupdated
 class substacksite:
     def __init__(self, sitename, siteurl, lastupdated):
@@ -53,8 +69,8 @@ try:
         printerinfo = pickle.load(f)
     print("\nCurrent printer: " + str(printerinfo))
 except:
-    print("\nNo existing print data!")
-    print("\nEnter printer name now:\n")
+    print("\nNo existing printer data!")
+    print("\nEnter printer name now:\nNote - if on Linux, consider this just a nickname\nCUPS will handle printer selection.\n")
     printerinfo = input()
     with open("printinfo.bin", "wb") as f:
         pickle.dump(printerinfo, f)
@@ -131,7 +147,7 @@ while (True):
         elif not substacksites:
             quit()
     elif choicetoentersite == "4":
-        print("\nEnter Printer Name: \nto exit, enter [return]\n")
+        print("\nEnter Printer Name: \nto exit, enter [return]\nNote - if on Linux, consider this just a nickname\nCUPS will handle printer selection.")
         printerinfo = input()
         if printerinfo == "return":
             break
@@ -150,8 +166,7 @@ while (True):
         pagefeed = feedparser.parse(obj.siteurl)
 
         #get the raw date the last entry was posted
-        lastpostdatetimeraw = pagefeed['entries'][1]['published'][5:]
-
+        lastpostdatetimeraw = pagefeed['entries'][0]['published'][5:]
         #convert the raw date to a python datetime object so it can be compared
         lastpostdatetime = datetime.strptime(lastpostdatetimeraw, '%d %b %Y %H:%M:%S %Z')
     
@@ -179,8 +194,21 @@ while (True):
                     print("\nUnable to print, ensure you are running Windows, and your printer settings are correct.")
             else:
                 print("\nNo new article detected from " + obj.sitename + "...")
-        elif sysplatform == "Linux":
-                print("\nPrinting on Linux not currently supported, file outputted to .pdf instead...")
+        elif sysplatform == "linux":
+            if lastpostdatetime > obj.lastupdated:
+                print("\nNew article detected from " + obj.sitename + "!")
+                urltodownload = pagefeed['entries'][0]['link']
+                pdfkit.from_url(urltodownload, 'out.pdf', configuration=pdfkitconfig)
+                print("\nNow Printing Article!\n")
+                obj.lastupdated = lastpostdatetime
+                with open("sites.bin", "wb") as f:
+                    pickle.dump(substacksites, f)
+                try:
+                    print("Unable to print on linux with this version!")
+                except:
+                    print("\nUnable to print.\n Ensure your printer settings are correct.")
+            else:
+                print("\nNo new article detected from " + obj.sitename + "...")
     #wait 60 seconds, then check again
     print("\nAwaiting 60(s) before scanning again...")
     time.sleep(60)
