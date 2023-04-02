@@ -208,7 +208,7 @@ while (True):
                     linuxprinterlist = printconnection.getPrinters()
                     linuxprintinfo = list(linuxprinterlist.keys())[0]
                     print(linuxprintinfo)
-                    printconnection.printFile(linuxprintinfo,'/home/kiri/Desktop/StackScribe/out.pdf',"",{})
+                    printconnection.printFile(linuxprintinfo, os.getcwd() + '/out.pdf',"",{})
                 except:
                     print("\nUnable to print.\nEnsure your printer settings are correct.")
             else:
